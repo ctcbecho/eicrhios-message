@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+	xmlns:bp="http://www.osgi.org/xmlns/blueprint/v1.0.0" xmlns:cm="http://aries.apache.org/blueprint/xmlns/blueprint-cm/v1.1.0"
+	xmlns:ext="http://aries.apache.org/blueprint/xmlns/blueprint-ext/v1.0.0">
+	<cm:property-placeholder persistent-id="idv.kaomk.eicrhios.message"
+		update-strategy="reload">
+		<cm:default-properties>
+			<cm:property name="outlook.user" value="" />
+			<cm:property name="outlook.serverName" value="" />
+			<cm:property name="outlook.enabled" value="false" />
+		</cm:default-properties>
+	</cm:property-placeholder>
+
+	<bean id="messageServiceFactory" class="idv.kaomk.eicrhios.message.MessageServiceFactory"
+		init-method="init" destroy-method="destroy">
+		<property name="outlookEnabled" value="${outlook.enabled}" />
+		<property name="outlookUser" value="${outlook.user}" />
+		<property name="outlookServerName" value="${outlook.serverName}" />
+		<property name="bundleContext" ref="blueprintBundleContext" />
+	</bean>
+
+	<!-- <bean id="outlookAgent" class="idv.kaomk.eicrhios.mail.OutlookAgent" 
+		init-method="init" destroy-method="destroy"> -->
+	<!-- <property name="user" value="${outlook.user}"/> -->
+	<!-- <property name="serverName" value="${outlook.serverName}"/> -->
+	<!-- </bean> -->
+</blueprint>
