@@ -4,10 +4,8 @@ import idv.kaomk.eicrhios.message.Message;
 import idv.kaomk.eicrhios.message.MessageListener;
 import idv.kaomk.eicrhios.message.MessageService;
 import idv.kaomk.eicrhios.message.MessageSessionContext;
-import idv.kaomk.eicrhios.message.TextMessage;
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,9 +58,11 @@ public class OutlookMessageService implements MessageService {
 
 	public void destroy() {
 		mWrapperMap.clear();
+		logger.info("{} STAs will be destroyed.", mEventSTA.size());
 		for (STA sta : mEventSTA.values()) {
 			sta.quit();
 		}
+		logger.info("STAs has be destroyed.");
 	}
 
 	@Override
@@ -110,6 +110,7 @@ public class OutlookMessageService implements MessageService {
 
 			Dispatch.put(safeMailItem, "Subject", subject);
 			Dispatch.call(safeMailItem, "Send");
+			logger.info("Send Outlook mail subject:{} successfully.", subject);
 		} finally {
 //			ComThread.Release();
 		}
@@ -118,7 +119,7 @@ public class OutlookMessageService implements MessageService {
 
 	@Override
 	public void addMessageListener(MessageListener listener) {
-		logger.debug(String.format("addMessageListener: %s", listener));
+		logger.info(String.format("addMessageListener: %s", listener));
 		final String folderName;
 		if (listener instanceof OutlookMessageListener) {
 			folderName = ((OutlookMessageListener) listener).getFolderName();
@@ -126,7 +127,7 @@ public class OutlookMessageService implements MessageService {
 			folderName = mDefaultFolder;
 		}
 
-		logger.debug(String.format("folderName: %s", folderName));
+		logger.info(String.format("folderName: %s", folderName));
 
 		synchronized (mWrapperMap) {
 			if (mWrapperMap.containsKey(folderName)) {
@@ -143,7 +144,6 @@ public class OutlookMessageService implements MessageService {
 					private ActiveXComponent mMapiSession;
 
 					public void run() {
-						// 這裡從InitSTA改成InitMTA...否則bundle restart之後event的註冊會失效
 						ComThread.InitMTA();
 						if (OnInit()) {
 							// this call blocks in the win32 message loop
@@ -171,7 +171,7 @@ public class OutlookMessageService implements MessageService {
 							Dispatch items = Dispatch.get(folder, "Items")
 									.toDispatch();
 
-							DispatchEvents event = new DispatchEvents(items, mw);
+							new DispatchEvents(items, mw);
 
 							return true;
 						} catch (Throwable e) {
@@ -185,19 +185,21 @@ public class OutlookMessageService implements MessageService {
 					@Override
 					public void OnQuit() {
 						Dispatch.call(mMapiSession, "Logoff");
-						logger.debug(String.format("STA %s destroyed", this));
+						logger.info(String.format("STA %s destroyed", this));
 					}
 
 				});
 				semaphore.acquireUninterruptibly();
-				logger.debug("STA init completed");
+				logger.info("STA init completed");
 			}
 		}
 	}
 
 	@Override
 	public void removeMessageListener(MessageListener listener) {
-		// TODO Auto-generated method stub
+		for (MessageListenerWrapper wrapper : mWrapperMap.values()){
+			wrapper.removeMessageListener(listener);
+		}
 
 	}
 
@@ -207,6 +209,11 @@ public class OutlookMessageService implements MessageService {
 
 		private void addMesageListener(MessageListener listener) {
 			mMessageListeners.add(listener);
+		}
+
+		public void removeMessageListener(MessageListener listener) {
+			mMessageListeners.remove(listener);
+			
 		}
 
 		public void ItemAdd(Variant[] args) {
@@ -250,12 +257,4 @@ public class OutlookMessageService implements MessageService {
 		}
 	}
 
-	public static void main(String args[]) {
-		// ComThread.InitMTA();
-//		OutlookMessageService service = new OutlookMessageService("echo.kao",
-//				"S0021EMAILBE04");
-//		service.sendMessage(new TextMessage("hello!",
-//				"echo.kao@chinatrust.com.tw"));
-//		ComThread.Release();
-	}
 }
